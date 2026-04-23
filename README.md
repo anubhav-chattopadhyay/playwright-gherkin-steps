@@ -88,11 +88,7 @@ This style reads like a Gherkin scenario but lives entirely inside a native Play
 
 ### Step 1 — Decorate your page object methods
 
-Locators can be declared as class properties and referenced in methods. There are two ways to write this depending on your `tsconfig` target.
-
-**Option A — Locators as field initializers (requires `target: ES2020`)**
-
-The constructor comes first, then locators are declared as fields below it. With `target: ES2020`, TypeScript compiles field initializers into the constructor body after `this.page = page`, so `this.page` is defined when the locators run.
+Declare locators as class properties below the constructor and decorate each method with `@step`:
 
 ```typescript
 // pages/SignupPage.ts
@@ -106,48 +102,6 @@ export class SignupPage {
   readonly txtSignupName = this.page.locator("//*[@data-qa='signup-name']");
   readonly txtSignupEmail = this.page.locator("//*[@data-qa='signup-email']");
   readonly btnSignup = this.page.locator("//*[@data-qa='signup-button']");
-
-  @step("Given User navigates to AutomationExercise")
-  async navigate() {
-    await this.page.goto("https://automationexercise.com/login");
-  }
-
-  @step("When User submits the signup form")
-  async submitSignupForm(table: DataTable) {
-    const { name, email } = table.first();
-    await this.txtSignupName.fill(name);
-    await this.txtSignupEmail.fill(email);
-    await this.btnSignup.click();
-  }
-
-  @step("Then User should be on the account info page")
-  async assertOnAccountInfoPage() {
-    await expect(this.page).toHaveURL(/.*signup/);
-  }
-}
-```
-
-> **Why `target: ES2020` matters here:** With `target: ES2022+`, TypeScript uses native class fields which initialize _before_ the constructor body. That means `this.page` is still `undefined` when `this.page.locator(...)` fires — causing a runtime crash. The helper files (`DataTable`, `StepRegistry`, `Gherkin`) are unaffected by this — they contain no field initializers that reference constructor parameters.
-
-**Option B — Locators assigned inside the constructor (works at any target)**
-
-If you need `target: ES2022+` or want to be explicit regardless of compiler settings, assign locators inside the constructor body instead:
-
-```typescript
-import { Page, Locator, expect } from "@playwright/test";
-import { step } from "../helpers/StepRegistry";
-import { DataTable } from "../helpers/DataTable";
-
-export class SignupPage {
-  readonly txtSignupName: Locator;
-  readonly txtSignupEmail: Locator;
-  readonly btnSignup: Locator;
-
-  constructor(private page: Page) {
-    this.txtSignupName = page.locator("//*[@data-qa='signup-name']");
-    this.txtSignupEmail = page.locator("//*[@data-qa='signup-email']");
-    this.btnSignup = page.locator("//*[@data-qa='signup-button']");
-  }
 
   @step("Given User navigates to AutomationExercise")
   async navigate() {
@@ -241,7 +195,7 @@ await Given('User submits the signup form')  // also works — keyword is ignore
 
 ## Style 2 — DataTable only (no BDD layer)
 
-If you prefer calling page object methods directly without the `Given/When/Then` wrapper, you can use `DataTable` standalone in any native Playwright test. No `@step` decorators or `registerSteps` needed.
+If you don't want to use the `Given`/`When`/`Then`/`And` constructs, but still want to leverage the `DataTable` data structure in your tests as a way to cleanly depict data passed to a step, you can use `DataTable` standalone in any native Playwright test — no `@step` decorators or `registerSteps` needed.
 
 ```typescript
 // tests/datatableExampleSignUp.spec.ts
@@ -392,3 +346,48 @@ runStep                →  wraps execution in test.step("Given User does X") fo
                           then strips keyword prefix → looks up registry → calls method.call(instance, dataTable)
 DataTable              →  parses pipe-delimited string into row objects on construction
 ```
+
+---
+
+## TypeScript target compatibility — page object locators
+
+The default page object pattern declares locators as class field initializers below the constructor:
+
+```typescript
+export class SignupPage {
+  constructor(private page: Page) {}
+
+  readonly txtSignupName = this.page.locator("//*[@data-qa='signup-name']");
+}
+```
+
+This works with `target: ES2020` because TypeScript compiles field initializers into the constructor body **after** `this.page = page`. With `target: ES2022+`, native class fields initialize **before** the constructor body, meaning `this.page` is still `undefined` when the locators run — causing a crash at runtime.
+
+The helper files (`DataTable`, `StepRegistry`, `Gherkin`) are unaffected by the target setting. This only applies to page objects that reference `this.page` in field initializers.
+
+**If you need `target: ES2022+`**, assign locators explicitly inside the constructor body instead:
+
+```typescript
+import { Page, Locator, expect } from "@playwright/test";
+import { step } from "../helpers/StepRegistry";
+import { DataTable } from "../helpers/DataTable";
+
+export class SignupPage {
+  readonly txtSignupName: Locator;
+  readonly txtSignupEmail: Locator;
+  readonly btnSignup: Locator;
+
+  constructor(private page: Page) {
+    this.txtSignupName = page.locator("//*[@data-qa='signup-name']");
+    this.txtSignupEmail = page.locator("//*[@data-qa='signup-email']");
+    this.btnSignup = page.locator("//*[@data-qa='signup-button']");
+  }
+
+  @step("Given User navigates to AutomationExercise")
+  async navigate() {
+    await this.page.goto("https://automationexercise.com/login");
+  }
+}
+```
+
+Everything else — `@step`, `registerSteps`, `createGherkin`, `DataTable` — works identically regardless of which pattern you use.
