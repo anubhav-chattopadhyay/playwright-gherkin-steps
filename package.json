@@ -1,0 +1,35 @@
+{
+  "name": "playwright-gherkin-steps",
+  "version": "1.0.0",
+  "description": "BDD-style Given/When/Then steps for Playwright — no feature files, no Cucumber, no extra runtime. Write readable, structured tests using plain TypeScript decorators and DataTables, powered entirely by native Playwright.",
+  "main": "index.js",
+  "scripts": {
+    "test": "npx playwright test",
+    "test:headed": "npx playwright test --headed",
+    "test:report": "npx playwright show-report"
+  },
+  "keywords": [
+    "playwright",
+    "bdd",
+    "gherkin",
+    "given-when-then",
+    "datatable",
+    "testing",
+    "e2e",
+    "step-definitions",
+    "no-cucumber",
+    "typescript"
+  ],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "@playwright/test": "^1.59.1",
+    "@types/node": "^25.6.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^6.0.3"
+  },
+  "dependencies": {
+    "dotenv": "^17.4.2"
+  }
+}
